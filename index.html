@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JS Runner - Offline JavaScript Executor</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Courier New', monospace;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2rem;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            opacity: 0.9;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            padding: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .editor-section, .output-section {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .section-title {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .code-editor {
+            width: 100%;
+            height: 300px;
+            background: #1e1e1e;
+            color: #d4d4d4;
+            border: none;
+            border-radius: 8px;
+            padding: 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            resize: vertical;
+            outline: none;
+        }
+
+        .output-console {
+            width: 100%;
+            height: 300px;
+            background: #000;
+            color: #00ff00;
+            border: none;
+            border-radius: 8px;
+            padding: 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            resize: vertical;
+            outline: none;
+        }
+
+        .controls {
+            padding: 20px;
+            background: #f8f9fa;
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            flex: 1;
+            min-width: 120px;
+        }
+
+        .btn-run {
+            background: #28a745;
+            color: white;
+        }
+
+        .btn-run:hover {
+            background: #218838;
+            transform: translateY(-2px);
+        }
+
+        .btn-clear {
+            background: #dc3545;
+            color: white;
+        }
+
+        .btn-clear:hover {
+            background: #c82333;
+            transform: translateY(-2px);
+        }
+
+        .btn-example {
+            background: #007bff;
+            color: white;
+        }
+
+        .btn-example:hover {
+            background: #0056b3;
+            transform: translateY(-2px);
+        }
+
+        .examples-dropdown {
+            padding: 12px;
+            border: 2px solid #007bff;
+            border-radius: 8px;
+            background: white;
+            font-size: 16px;
+            cursor: pointer;
+            flex: 1;
+            min-width: 120px;
+        }
+
+        .status-bar {
+            padding: 10px 20px;
+            background: #e9ecef;
+            font-size: 12px;
+            color: #666;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .error {
+            color: #ff4444 !important;
+        }
+
+        .loading {
+            opacity: 0.7;
+            pointer-events: none;
+        }
+
+        @media (max-width: 768px) {
+            .controls {
+                flex-direction: column;
+            }
+            
+            .btn, .examples-dropdown {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 JS Runner</h1>
+            <p>Run JavaScript code offline in your browser</p>
+        </div>
+
+        <div class="main-content">
+            <div class="editor-section">
+                <div class="section-header">
+                    <span class="section-title">📝 Code Editor</span>
+                    <span id="code-stats">0 chars | 0 lines</span>
+                </div>
+                <textarea 
+                    id="code-editor" 
+                    class="code-editor" 
+                    placeholder="// Write your JavaScript code here...
+console.log('Hello, World!');
+
+// Try some math:
+const result = 2 + 2;
+console.log('2 + 2 =', result);"
+                    spellcheck="false"
+                ></textarea>
+            </div>
+
+            <div class="output-section">
+                <div class="section-header">
+                    <span class="section-title">📺 Output Console</span>
+                    <button class="btn btn-clear" onclick="clearOutput()" style="padding: 8px 16px; font-size: 12px;">Clear</button>
+                </div>
+                <textarea 
+                    id="output-console" 
+                    class="output-console" 
+                    readonly
+                    placeholder="Output will appear here..."
+                ></textarea>
+            </div>
+        </div>
+
+        <div class="controls">
+            <button class="btn btn-run" onclick="runCode()">
+                ▶️ Run Code
+            </button>
+            <button class="btn btn-clear" onclick="clearAll()">
+                🗑️ Clear All
+            </button>
+            <select class="examples-dropdown" onchange="loadExample(this.value)">
+                <option value="">📚 Load Examples</option>
+                <option value="basic">Basic Math</option>
+                <option value="arrays">Array Operations</option>
+                <option value="objects">Object Manipulation</option>
+                <option value="functions">Function Examples</option>
+                <option value="async">Async/Await</option>
+            </select>
+        </div>
+
+        <div class="status-bar">
+            <span id="status">Ready to run code</span>
+            <span id="version">JS Runner v1.0</span>
+        </div>
+    </div>
+
+    <script>
+        const codeEditor = document.getElementById('code-editor');
+        const outputConsole = document.getElementById('output-console');
+        const codeStats = document.getElementById('code-stats');
+        const status = document.getElementById('status');
+
+        // Update code stats
+        codeEditor.addEventListener('input', () => {
+            const text = codeEditor.value;
+            const chars = text.length;
+            const lines = text.split('\n').length;
+            codeStats.textContent = `${chars} chars | ${lines} lines`;
+        });
+
+        // Examples
+        const examples = {
+            basic: `// Basic Math Operations
+console.log('=== Basic Math ===');
+
+const a = 10;
+const b = 5;
+
+console.log('Addition:', a + b);
+console.log('Subtraction:', a - b);
+console.log('Multiplication:', a * b);
+console.log('Division:', a / b);
+console.log('Modulo:', a % b);
+
+// More complex operations
+const numbers = [1, 2, 3, 4, 5];
+const sum = numbers.reduce((acc, num) => acc + num, 0);
+console.log('Sum of array:', sum);
+
+const average = sum / numbers.length;
+console.log('Average:', average);`,
+
+            arrays: `// Array Operations
+console.log('=== Array Operations ===');
+
+const fruits = ['apple', 'banana', 'orange', 'grape'];
+console.log('Original array:', fruits);
+
+// Array methods
+console.log('Length:', fruits.length);
+console.log('First item:', fruits[0]);
+console.log('Last item:', fruits[fruits.length - 1]);
+
+// Add items
+fruits.push('mango');
+console.log('After push:', fruits);
+
+// Remove item
+const removed = fruits.pop();
+console.log('Removed item:', removed);
+console.log('After pop:', fruits);
+
+// Transform array
+const upperFruits = fruits.map(fruit => fruit.toUpperCase());
+console.log('Uppercase:', upperFruits);
+
+// Filter array
+const longFruits = fruits.filter(fruit => fruit.length > 5);
+console.log('Long fruits:', longFruits);`,
+
+            objects: `// Object Manipulation
+console.log('=== Object Manipulation ===');
+
+const person = {
+    name: 'John Doe',
+    age: 30,
+    city: 'New York',
+    hobbies: ['reading', 'coding', 'gaming']
+};
+
+console.log('Person object:', person);
+console.log('Name:', person.name);
+console.log('Age:', person.age);
+
+// Add new property
+person.job = 'Developer';
+console.log('After adding job:', person);
+
+// Object methods
+console.log('Keys:', Object.keys(person));
+console.log('Values:', Object.values(person));
+console.log('Entries:', Object.entries(person));
+
+// Destructuring
+const {name, age} = person;
+console.log('Destructured:', name, age);`,
+
+            functions: `// Function Examples
+console.log('=== Function Examples ===');
+
+// Function declaration
+function add(a, b) {
+    return a + b;
+}
+
+// Function expression
+const multiply = function(a, b) {
+    return a * b;
+};
+
+// Arrow function
+const divide = (a, b) => a / b;
+
+// Test functions
+console.log('add(5, 3):', add(5, 3));
+console.log('multiply(4, 6):', multiply(4, 6));
+console.log('divide(15, 3):', divide(15, 3));
+
+// Higher-order function
+const operation = (func, a, b) => func(a, b);
+console.log('operation(add, 10, 5):', operation(add, 10, 5));
+
+// Recursive function
+function factorial(n) {
+    if (n <= 1) return 1;
+    return n * factorial(n - 1);
+}
+console.log('factorial(5):', factorial(5));`,
+
+            async: `// Async/Await Examples
+console.log('=== Async/Await Examples ===');
+
+// Simulate async operation
+const fetchData = () => {
+    return new Promise(resolve => {
+        setTimeout(() => {
+            resolve('Data fetched successfully!');
+        }, 1000);
+    });
+};
+
+// Async function
+const getData = async () => {
+    try {
+        console.log('Fetching data...');
+        const result = await fetchData();
+        console.log(result);
+        return result;
+    } catch (error) {
+        console.log('Error:', error);
+    }
+};
+
+// Promise example
+const promiseExample = () => {
+    return new Promise((resolve, reject) => {
+        setTimeout(() => {
+            resolve('Promise resolved!');
+        }, 500);
+    });
+};
+
+// Run examples
+console.log('Starting async operations...');
+
+getData().then(() => {
+    console.log('Async operation completed');
+});
+
+promiseExample().then(result => {
+    console.log('Promise result:', result);
+});
+
+console.log('This runs immediately (before async operations complete)');`
+        };
+
+        function loadExample(exampleName) {
+            if (exampleName && examples[exampleName]) {
+                codeEditor.value = examples[exampleName];
+                codeEditor.dispatchEvent(new Event('input'));
+                status.textContent = `Loaded example: ${exampleName}`;
+            }
+        }
+
+        function runCode() {
+            const code = codeEditor.value;
+            if (!code.trim()) {
+                status.textContent = 'Please write some code first';
+                return;
+            }
+
+            // Clear previous output
+            outputConsole.value = '';
+            status.textContent = 'Running code...';
+            
+            // Create custom console
+            const customConsole = {
+                log: (...args) => {
+                    const message = args.map(arg => {
+                        if (typeof arg === 'object') {
+                            return JSON.stringify(arg, null, 2);
+                        }
+                        return String(arg);
+                    }).join(' ');
+                    outputConsole.value += message + '\n';
+                },
+                error: (...args) => {
+                    const message = 'ERROR: ' + args.join(' ');
+                    outputConsole.value += message + '\n';
+                    outputConsole.classList.add('error');
+                },
+                warn: (...args) => {
+                    const message = 'WARNING: ' + args.join(' ');
+                    outputConsole.value += message + '\n';
+                },
+                info: (...args) => {
+                    const message = 'INFO: ' + args.join(' ');
+                    outputConsole.value += message + '\n';
+                }
+            };
+
+            try {
+                // Execute code with custom console
+                const executeCode = new Function('console', code);
+                executeCode(customConsole);
+                
+                if (outputConsole.value === '') {
+                    outputConsole.value = 'Code executed successfully (no output)\n';
+                }
+                
+                status.textContent = 'Code executed successfully';
+                outputConsole.classList.remove('error');
+            } catch (error) {
+                const errorMessage = `Error: ${error.message}`;
+                outputConsole.value = errorMessage + '\n';
+                status.textContent = 'Execution failed';
+                outputConsole.classList.add('error');
+            }
+
+            // Scroll to bottom of output
+            outputConsole.scrollTop = outputConsole.scrollHeight;
+        }
+
+        function clearOutput() {
+            outputConsole.value = '';
+            outputConsole.classList.remove('error');
+            status.textContent = 'Output cleared';
+        }
+
+        function clearAll() {
+            codeEditor.value = '';
+            outputConsole.value = '';
+            outputConsole.classList.remove('error');
+            codeEditor.dispatchEvent(new Event('input'));
+            status.textContent = 'All cleared';
+        }
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            // Ctrl+Enter or Cmd+Enter to run code
+            if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                e.preventDefault();
+                runCode();
+            }
+            // Ctrl+L or Cmd+L to clear all
+            if ((e.ctrlKey || e.metaKey) && e.key === 'l') {
+                e.preventDefault();
+                clearAll();
+            }
+        });
+
+        // Initialize
+        status.textContent = 'Ready to run code - Press Ctrl+Enter to run';
+    </script>
+</body>
+</html>
